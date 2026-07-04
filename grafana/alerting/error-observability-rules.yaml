@@ -1,0 +1,58 @@
+# Error-observability alert expressions (§13, Slice 4b).
+#
+# Format: Prometheus alerting rules — usable directly with Prometheus + Alertmanager, and the
+# canonical source for the equivalent Grafana Alerting rules (§1 decision: Grafana Alerting →
+# Slack/webhook). THRESHOLDS ARE PLACEHOLDERS — tune to real dev/prod baselines before enabling.
+#
+# Cardinality note: every expression aggregates by BOUNDED labels only (service, subsystem,
+# jobType, dependency, route, code) — never fingerprint/trace/tenant (§7).
+groups:
+  - name: error-observability
+    rules:
+      - alert: HighInternalErrorRate
+        expr: sum(rate(errors_total{code=~"ERR_INTERNAL|ERR_DEPENDENCY"}[5m])) by (service, subsystem) > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: 'High 5xx/internal error rate — {{ $labels.service }}/{{ $labels.subsystem }}'
+
+      - alert: HighUncaughtExceptionRate
+        expr: sum(rate(errors_total{severity="critical"}[5m])) by (service) > 0.01
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: 'Uncaught/critical exceptions rising — {{ $labels.service }}'
+
+      - alert: WorkerJobFailureSpike
+        expr: sum(rate(errors_total{subsystem=~"worker\\..*", severity="error"}[5m])) by (jobType) > 0.05
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: 'Worker terminal failures spiking — job {{ $labels.jobType }}'
+
+      - alert: WebhookFailureSpike
+        expr: sum(rate(errors_total{subsystem=~"webhook\\..*"}[5m])) by (subsystem) > 0.05
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: 'Inbound webhook failures spiking — {{ $labels.subsystem }}'
+
+      - alert: AiGatewayProviderFailureSpike
+        expr: sum(rate(errors_total{subsystem="ai.gateway", subcode=~"AI_PROVIDER_.*"}[5m])) by (dependency) > 0.05
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: 'AI provider failures — {{ $labels.dependency }}'
+
+      - alert: AuthAbuseAnomaly
+        expr: sum(rate(operational_anomalies_total{code=~"ERR_FORBIDDEN|ERR_RATE_LIMITED"}[5m])) by (route) > 1
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: 'Auth/rate-limit anomaly (possible abuse) — route {{ $labels.route }}'
