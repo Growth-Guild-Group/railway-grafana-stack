@@ -14,6 +14,13 @@ datasources:
     orgId: 1
     uid: grafana_lokiq
     url: $LOKI_INTERNAL_URL
+    jsonData:
+      # Turn the traceId field on an error log into a Tempo link.
+      derivedFields:
+        - name: traceId
+          matcherRegex: '"traceId":"(\w+)"'
+          url: '${__value.raw}'
+          datasourceUid: tempo
     user:
     database:
     basicAuth:
@@ -26,18 +33,27 @@ datasources:
     orgId: 1
     uid: grafana_prometheus
     url: $PROMETHEUS_INTERNAL_URL
+    jsonData:
+      exemplarTraceIdDestinations:
+        - name: traceId
+          datasourceUid: tempo
     user:
     database:
     basicAuth:
     basicAuthUser:
     withCredentials:
-    isDefault: false
+    isDefault: true
   - name: Tempo
     type: tempo
     access: proxy
     orgId: 1
     uid: grafana_tempo
     url: $TEMPO_INTERNAL_URL
+    jsonData:
+      # Trace → its logs in Loki (by traceId).
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
     user:
     database:
     basicAuth:
