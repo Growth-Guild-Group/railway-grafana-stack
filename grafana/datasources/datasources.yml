@@ -1,62 +1,51 @@
-# Configuration file version
-# See here fore more information on configuration:
-# https://grafana.com/docs/grafana/latest/administration/provisioning/#example-data-source-configuration-file
+# Grafana datasource provisioning. Mounted at /etc/grafana/provisioning/datasources/.
+# The uids (prometheus/loki/tempo) match the dashboard JSON + the alerting rules, and wire the
+# trace↔log↔exemplar correlation the §16 exit criteria require.
 apiVersion: 1
 
-# Mark provisioned data sources for deletion if they are no longer in a provisioning file.
+# Delete provisioned datasources no longer present in a provisioning file.
 prune: false
 
-# List of data sources to insert/update depending on what's available.
 datasources:
-  - name: Loki
-    type: loki
-    access: direct
-    orgId: 1
-    uid: grafana_lokiq
-    url: $LOKI_INTERNAL_URL
-    jsonData:
-      # Turn the traceId field on an error log into a Tempo link.
-      derivedFields:
-        - name: traceId
-          matcherRegex: '"traceId":"(\w+)"'
-          url: '${__value.raw}'
-          datasourceUid: tempo
-    user:
-    database:
-    basicAuth:
-    basicAuthUser:
-    withCredentials:
-    isDefault: true
   - name: Prometheus
     type: prometheus
     access: proxy
     orgId: 1
-    uid: grafana_prometheus
-    url: $PROMETHEUS_INTERNAL_URL
+    uid: prometheus
+    url: $PROMETHEUS_INTERNAL_URL # e.g. http://prometheus-yqhm.railway.internal:9090
+    isDefault: true # the ONE default
     jsonData:
+      # errors_total carries an exemplar traceId → jump from a spike to the trace.
       exemplarTraceIdDestinations:
         - name: traceId
           datasourceUid: tempo
-    user:
-    database:
-    basicAuth:
-    basicAuthUser:
-    withCredentials:
-    isDefault: true
+
+  - name: Loki
+    type: loki
+    access: proxy # NOT direct — the browser can't reach *.railway.internal
+    orgId: 1
+    uid: loki
+    url: $LOKI_INTERNAL_URL # e.g. http://loki.railway.internal:3100
+    isDefault: false
+    jsonData:
+      # Turn the traceId on an error log into a Tempo link. NOTE: with OTLP→Loki, traceId may
+      # arrive as structured metadata / be named `trace_id` — verify against a real log and
+      # adjust this matcher (or read the structured field) if the link doesn't resolve.
+      derivedFields:
+        - name: traceId
+          matcherRegex: '"traceId":"(\w+)"'
+          url: '$${__value.raw}' # escaped — this file interpolates $VAR env vars
+          datasourceUid: tempo
+
   - name: Tempo
     type: tempo
     access: proxy
     orgId: 1
-    uid: grafana_tempo
-    url: $TEMPO_INTERNAL_URL
+    uid: tempo
+    url: $TEMPO_INTERNAL_URL # QUERY API — e.g. http://tempo.railway.internal:3200 (NOT :4317)
+    isDefault: false
     jsonData:
       # Trace → its logs in Loki (by traceId).
       tracesToLogsV2:
         datasourceUid: loki
         filterByTraceID: true
-    user:
-    database:
-    basicAuth:
-    basicAuthUser:
-    withCredentials:
-    isDefault: false

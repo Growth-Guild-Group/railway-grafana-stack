@@ -1,0 +1,12 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: slack-errors
+    receivers:
+      - uid: slack_errors
+        type: slack
+        settings:
+          # Set SLACK_WEBHOOK_URL on the Grafana service — do NOT commit the webhook.
+          # (Grafana expands ${VAR} in provisioning files.)
+          url: ${SLACK_WEBHOOK_URL}
+        disableResolveMessage: false

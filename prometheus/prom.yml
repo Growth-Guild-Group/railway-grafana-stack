@@ -1,8 +1,8 @@
 global:
   scrape_interval: 15s # Default scrape interval
 
-rule_files:
-  - /etc/prometheus/rules/*.yaml
+# Alerting is handled by Grafana (grafana/alerting/) — no rule_files / Alertmanager here.
+# App metrics arrive via Alloy remote_write (--web.enable-remote-write-receiver), not scrape.
 
 scrape_configs:
   - job_name: 'prometheus'
