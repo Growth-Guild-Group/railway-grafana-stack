@@ -4,6 +4,8 @@ FROM grafana/grafana-oss:${VERSION}
 
 # copy the datasources and dashboards
 COPY datasources /etc/grafana/provisioning/datasources
-COPY provisioning/dashboards /etc/grafana/provisioning/dashboards
+# dashboards.yaml is a FILE (the dashboard provider) — copy it INTO the provisioning dir
+# (trailing slash = destination directory). The dashboard JSON models go to /etc/grafana/dashboards.
+COPY provisioning/dashboards.yaml /etc/grafana/provisioning/dashboards/
 COPY alerting /etc/grafana/provisioning/alerting
 COPY dashboards /etc/grafana/dashboards
