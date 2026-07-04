@@ -20,7 +20,7 @@ groups:
         labels: { severity: page }
         annotations:
           summary: 'High 5xx/internal error rate — {{ $labels.service }}/{{ $labels.subsystem }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -57,7 +57,7 @@ groups:
         labels: { severity: page }
         annotations:
           summary: 'Uncaught/critical exceptions rising — {{ $labels.service }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -94,7 +94,7 @@ groups:
         labels: { severity: ticket }
         annotations:
           summary: 'Worker terminal failures spiking — job {{ $labels.jobType }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -131,7 +131,7 @@ groups:
         labels: { severity: ticket }
         annotations:
           summary: 'Inbound webhook failures spiking — {{ $labels.subsystem }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -168,7 +168,7 @@ groups:
         labels: { severity: ticket }
         annotations:
           summary: 'AI provider failures — {{ $labels.dependency }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -205,7 +205,7 @@ groups:
         labels: { severity: ticket }
         annotations:
           summary: 'Auth/rate-limit anomaly — route {{ $labels.route }}'
-        notification_settings: { receiver: slack-errors }
+        notification_settings: { receiver: discord-errors }
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
