@@ -1,5 +1,5 @@
 # Grafana Alerting provisioning (apiVersion 1). §13 error-observability alerts.
-# Each rule routes straight to the `slack-errors` contact point via notification_settings —
+# Each rule routes straight to the `discord-errors` contact point via notification_settings —
 # no notification-policy tree needed. Aggregations use BOUNDED labels only (§7). NoData until
 # ERROR_SINK_MODE=grafana_native is live (errors_total doesn't exist in sentry mode).
 # THRESHOLDS ARE PLACEHOLDERS — tune to real baselines.
