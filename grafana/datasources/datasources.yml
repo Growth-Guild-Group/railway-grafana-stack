@@ -1,24 +1,28 @@
 # Grafana datasource provisioning. Mounted at /etc/grafana/provisioning/datasources/.
-# The uids (prometheus/loki/tempo) match the dashboard JSON + the alerting rules, and wire the
-# trace↔log↔exemplar correlation the §16 exit criteria require.
+# The uids (prometheus/loki/tempo) match the dashboard JSON + the alerting rules.
+#
+# ORDER MATTERS: Grafana resolves each datasource's cross-references (exemplarTraceIdDestinations,
+# derivedFields datasourceUid) against datasources ALREADY provisioned, in file order — a referenced
+# datasource must appear BEFORE the ones that reference it, or provisioning fails with
+# "data source not found". Tempo is referenced by both Prometheus and Loki, so it MUST come first.
+# The reverse link (Tempo→Loki via tracesToLogsV2) would form a cycle, so it's intentionally omitted
+# here — re-add trace→logs via a Correlations provisioning file once both datasources exist.
 apiVersion: 1
 
 # Delete provisioned datasources no longer present in a provisioning file.
 prune: false
 
 datasources:
-  - name: Prometheus
-    type: prometheus
+  # Tempo FIRST — it's the target of the exemplar + derived-field links below.
+  - name: Tempo
+    type: tempo
     access: proxy
     orgId: 1
-    uid: prometheus
-    url: $PROMETHEUS_INTERNAL_URL # e.g. http://prometheus-yqhm.railway.internal:9090
-    isDefault: true # the ONE default
-    jsonData:
-      # errors_total carries an exemplar traceId → jump from a spike to the trace.
-      exemplarTraceIdDestinations:
-        - name: traceId
-          datasourceUid: tempo
+    uid: tempo
+    url: $TEMPO_INTERNAL_URL # QUERY API — e.g. http://tempo.railway.internal:3200 (NOT :4317)
+    isDefault: false
+    # NOTE: trace→logs (tracesToLogsV2 → loki) omitted to avoid a provisioning cycle with Loki.
+    # Add it back as a Correlation (grafana/provisioning/... correlations) after datasources exist.
 
   - name: Loki
     type: loki
@@ -28,24 +32,24 @@ datasources:
     url: $LOKI_INTERNAL_URL # e.g. http://loki.railway.internal:3100
     isDefault: false
     jsonData:
-      # Turn the traceId on an error log into a Tempo link. NOTE: with OTLP→Loki, traceId may
-      # arrive as structured metadata / be named `trace_id` — verify against a real log and
-      # adjust this matcher (or read the structured field) if the link doesn't resolve.
+      # Turn the traceId on an error log into a Tempo link (log→trace). NOTE: with OTLP→Loki, traceId
+      # may arrive as structured metadata / be named `trace_id` — verify against a real log and adjust
+      # this matcher (or read the structured field) if the link doesn't resolve.
       derivedFields:
         - name: traceId
           matcherRegex: '"traceId":"(\w+)"'
           url: '$${__value.raw}' # escaped — this file interpolates $VAR env vars
           datasourceUid: tempo
 
-  - name: Tempo
-    type: tempo
+  - name: Prometheus
+    type: prometheus
     access: proxy
     orgId: 1
-    uid: tempo
-    url: $TEMPO_INTERNAL_URL # QUERY API — e.g. http://tempo.railway.internal:3200 (NOT :4317)
-    isDefault: false
+    uid: prometheus
+    url: $PROMETHEUS_INTERNAL_URL # e.g. http://prometheus-yqhm.railway.internal:9090
+    isDefault: true # the ONE default
     jsonData:
-      # Trace → its logs in Loki (by traceId).
-      tracesToLogsV2:
-        datasourceUid: loki
-        filterByTraceID: true
+      # errors_total carries an exemplar traceId → jump from a spike to the trace (metric→trace).
+      exemplarTraceIdDestinations:
+        - name: traceId
+          datasourceUid: tempo
